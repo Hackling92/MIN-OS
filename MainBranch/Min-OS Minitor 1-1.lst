@@ -1,0 +1,227 @@
+0001   0000             ;MIN-OS-Serial -  VER 1.0A
+0002   0000             ;
+0003   0000             ;
+0004   0000             ;Ram located at 8000h
+0005   0000             ;Stack Pointer at 88FFh
+0006   0000             ;Change as needed
+0007   0000             ;If this code is used give credit to hackling92.  Nothing special just use my name. Thank You
+0008   0000             
+0009   0000             
+0010   0000             
+0011   0000             
+0012   0000             	; start the program at memory region 1 for programing simplicity
+0013   0000             	.ORG 0001h
+0014   0001             
+0015   0001             lf	EQU 0Ah		; declair Line Feed
+0016   0001             
+0017   0001 31 FF 88    	LD SP,88FFh	; set the stack pointer
+0018   0004             
+0019   0004             inituart:
+0020   0004 3E 80       	LD A,10000000b  ; set div latch enable 1
+0021   0006 D3 03       	OUT (03h),A	; write lcr
+0022   0008 3E 0C       	LD A,0Ch		; set Divisor
+0023   000A D3 00       	OUT (00h),A	; dll 0x07 (#7)
+0024   000C 3E 00       	LD A,00h
+0025   000E D3 01       	OUT (01h),A	; dlm 0x00
+0026   0010 3E 03       	LD A,00000011b	; set dle to 0, break to 0, no parity, 1 stop bit, 8 bytes
+0027   0012 D3 03       	OUT (03h),A	; write new configured lcr
+0028   0014 C3 65 00    	JP startloop	; program start
+0029   0017             		
+0030   0017             
+0031   0017             ;-----------------------
+0032   0017             putc:			;Put Charactor Loop
+0033   0017 CD 2D 00    	CALL tx_ready
+0034   001A D3 00       	OUT (00h), A
+0035   001C C9          	RET
+0036   001D             
+0037   001D             puts:			;Put String Loop
+0038   001D F5          	PUSH AF
+0039   001E E5          	PUSH HL
+0040   001F             puts_loop:
+0041   001F 7E          	LD A, (HL)
+0042   0020 FE 00       	CP 0
+0043   0022 28 06       	JR Z, puts_end
+0044   0024 CD 17 00    	CALL putc
+0045   0027 23          	INC HL
+0046   0028 18 F5       	JR puts_loop
+0047   002A             puts_end:
+0048   002A E1          	POP HL
+0049   002B F1          	POP AF
+0050   002C C9          	RET
+0051   002D             ;-----------------------
+0052   002D             
+0053   002D             
+0054   002D             tx_ready:		;Check For Charactor In UART
+0055   002D F5          	PUSH AF
+0056   002E             tx_ready_loop:
+0057   002E DB 05       	IN A, (05h)
+0058   0030 CB 6F       	BIT 5, A
+0059   0032 28 FA       	JR Z, tx_ready_loop
+0060   0034 F1          	POP AF
+0061   0035 C9          	RET
+0062   0036             
+0063   0036             
+0064   0036             ;-----------------------
+0065   0036             
+0066   0036             uin:			;Get Charactor
+0067   0036 DB 05       	IN A, (05h)
+0068   0038 CB 47       	BIT 0,A
+0069   003A CA 36 00    	JP Z,uin
+0070   003D DB 00       	IN A,(00h)
+0071   003F C9          	RET
+0072   0040             
+0073   0040             
+0074   0040             ;-----------------------
+0075   0040             
+0076   0040             make_hex:		; convert ascii from uart to hex
+0077   0040 06 00       	LD B,0
+0078   0042 CD 4A 00    	CALL h1
+0079   0045 07          	RLCA
+0080   0046 07          	RLCA
+0081   0047 07          	RLCA
+0082   0048 07          	RLCA
+0083   0049 47          	LD B,A
+0084   004A             h1:
+0085   004A CD 36 00    	CALL uin
+0086   004D 4F          	LD C,A
+0087   004E CD 17 00    	CALL putc
+0088   0051 E6 70       	AND 070h
+0089   0053 FE 40       	CP 040h
+0090   0055 DA 60 00    	JP C,h2
+0091   0058 79          	LD A,C
+0092   0059 E6 0F       	AND 00Fh
+0093   005B C6 09       	ADD A,9
+0094   005D C3 63 00    	JP h3
+0095   0060             h2:
+0096   0060 79          	LD A,C
+0097   0061 E6 0F       	AND 00Fh
+0098   0063             h3:
+0099   0063 B0          	OR B
+0100   0064 C9          	RET
+0101   0065             
+0102   0065             ;-----------------------	
+0103   0065             	
+0104   0065             startloop:		; starting point for program	
+0105   0065 21 15 01    	LD HL, starttext	;Load Start Message Location
+0106   0068 CD 1D 00    	CALL puts	; print start message
+0107   006B             
+0108   006B             ;----------------------------------------------
+0109   006B             command_loop:
+0110   006B CD 36 00    	CALL uin
+0111   006E CD 17 00    	CALL putc
+0112   0071 FE 4A       	CP 4Ah
+0113   0073 CA 80 00    	JP Z,j_loop
+0114   0076 FE 50       	CP 50h
+0115   0078 CA 8B 00    	JP Z,p_loop
+0116   007B FE 52       	CP 52h
+0117   007D CA 9B 00    	JP Z,r_loop
+0118   0080             
+0119   0080             
+0120   0080             j_loop:
+0121   0080 CD 36 00    	CALL uin
+0122   0083 CD 17 00    	CALL putc
+0123   0086 FE 4D       	CP 4Dh		;JM COMMAND
+0124   0088 CA 00 81    	JP Z,8100h
+0125   008B             
+0126   008B             p_loop:
+0127   008B CD 36 00    	CALL uin
+0128   008E CD 17 00    	CALL putc
+0129   0091 FE 45       	CP 45h		;PE COMMAND
+0130   0093 CA D6 00    	JP Z,pe_com
+0131   0096 FE 4F       	CP 4Fh		;PO COMMAND
+0132   0098 CA F5 00    	JP Z,po_com
+0133   009B             
+0134   009B             r_loop:
+0135   009B CD 36 00    	CALL uin
+0136   009E CD 17 00    	CALL putc
+0137   00A1 FE 53       	CP 53h		;RS COMMAND
+0138   00A3 CA 00 00    	JP Z,0000h
+0139   00A6 FE 50       	CP 50h		;RP COMMAND "REMOTE PROGRAM"
+0140   00A8 CA 01 01    	JP Z,serial_program
+0141   00AB             
+0142   00AB             
+0143   00AB             start_add:		; PE/PO Start Address
+0144   00AB 53 74 61 72 	DEFB "Start Add: ",0
+0144   00AF 74 20 41 64 
+0144   00B3 64 3A 20 00 
+0145   00B7             end_add:		; PE End Address
+0146   00B7 45 6E 64 20 	DEFB "End Add: ",0
+0146   00BB 41 64 64 3A 
+0146   00BF 20 00       
+0147   00C1             new_dat:		; New Data For PO Command
+0148   00C1 4E 65 77 20 	DEFB "New Data: ",0
+0148   00C5 44 61 74 61 
+0148   00C9 3A 20 00    
+0149   00CC             address:		; Address Text
+0150   00CC 41 64 64 72 	DEFB "Address: ",0
+0150   00D0 65 73 73 3A 
+0150   00D4 20 00       
+0151   00D6             
+0152   00D6             ;---------------------------------------------------
+0153   00D6             pe_com:
+0154   00D6 21 AB 00    	LD HL, start_add
+0155   00D9 CD 1D 00    	CALL puts
+0156   00DC CD 40 00    	CALL make_hex
+0157   00DF 57          	LD D,A
+0158   00E0 CD 40 00    	CALL make_hex
+0159   00E3 5F          	LD E,A
+0160   00E4 21 B7 00    	LD HL, end_add
+0161   00E7 CD 1D 00    	CALL puts
+0162   00EA 01 00 00    	LD BC,0000h
+0163   00ED CD 40 00    	CALL make_hex
+0164   00F0 57          	LD D,A
+0165   00F1 CD 40 00    	CALL make_hex
+0166   00F4 5F          	LD E,A
+0167   00F5             
+0168   00F5             po_com:
+0169   00F5 21 CC 00    	LD HL, address
+0170   00F8 CD 1D 00    	CALL puts
+0171   00FB             	;add func here from above
+0172   00FB 21 C1 00    	LD HL, new_dat
+0173   00FE CD 1D 00    	CALL puts
+0174   0101             	;add func here
+0175   0101             
+0176   0101             ;---------------------------------------------------
+0177   0101             
+0178   0101             serial_program:
+0179   0101 21 00 81    	LD HL,8100h	; set location to store program sent from serial terminal
+0180   0104             secloop:
+0181   0104 CD 36 00    	CALL uin
+0182   0107 CD 17 00    	CALL putc
+0183   010A FE 7F       	CP 7Fh		; Check for delete to know when to execute program in ram
+0184   010C CA 00 81    	JP Z,8100h	; If delete jump to ram location
+0185   010F 77          	LD (HL),A	; used to store above hex into memory
+0186   0110 23          	INC HL		; incriment hl for next byte
+0187   0111 C3 04 01    	JP secloop	; loop until makehex finds 'del', then execute jump to 8100h
+0188   0114             	
+0189   0114 76          	HALT		; stop cpu in the event that the program misbehaves 
+0190   0115             
+0191   0115             
+0192   0115             starttext:		; start message
+0193   0115 52 65 61 64 	DEFB "Ready", lf,0
+0193   0119 79 0A 00    
+0194   011C             	
+0195   011C             	
+0196   011C             
+0197   011C             	;.ORG 00F0H
+0198   011C             start:	
+0199   011C 3E 01       	LD A, 1H
+0200   011E             
+0201   011E             loop:
+0202   011E CD 17 00    	CALL putc
+0203   0121 47          	LD B, A
+0204   0122 3E 99       	LD A, 99h
+0205   0124 B8          	CP B
+0206   0125 CA 1C 01    	JP Z, start
+0207   0128 78          	LD A, B
+0208   0129 3C          	INC A
+0209   012A C3 1E 01    	JP loop
+0210   012D             
+0211   012D             	.ORG 8100H
+0212   8100             
+0213   8100             	;LD HL,8110H
+0214   8100             	;LD DE,00F0H
+0215   8100             	;LD BC,32
+0216   8100             	;LDIR
+0217   8100 C3 FF 00    	JP 00FFH
+Number of errors = 0
