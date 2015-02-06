@@ -16,6 +16,7 @@ lf	EQU 0Ah		; declair Line Feed
 
 	LD SP,88FFh	; set the stack pointer
 
+
 inituart:
 	LD A,10000000b  ; set div latch enable 1
 	OUT (03h),A	; write lcr
@@ -107,6 +108,8 @@ startloop:		; starting point for program
 
 ;----------------------------------------------
 command_loop:
+	LD HL,command_msg
+	CALL puts
 	CALL uin
 	CALL putc
 	CP 4Ah
@@ -122,6 +125,7 @@ j_loop:
 	CALL putc
 	CP 4Dh		;JM COMMAND
 	JP Z,8100h
+	JP command_loop
 
 p_loop:
 	CALL uin
@@ -130,6 +134,7 @@ p_loop:
 	JP Z,pe_com
 	CP 4Fh		;PO COMMAND
 	JP Z,po_com
+	JP command_loop
 
 r_loop:
 	CALL uin
@@ -138,6 +143,7 @@ r_loop:
 	JP Z,0000h
 	CP 50h		;RP COMMAND "REMOTE PROGRAM"
 	JP Z,serial_program
+	JP command_loop
 
 
 start_add:		; PE/PO Start Address
@@ -148,22 +154,29 @@ new_dat:		; New Data For PO Command
 	DEFB "New Data: ",0
 address:		; Address Text
 	DEFB "Address: ",0
+starttext:		; start message
+	DEFB "Ready", lf,0
+command_msg:		; Enter Command message
+	DEFB "Command: ",0
+	
+	
+
 
 ;---------------------------------------------------
 pe_com:
-	LD HL, start_add
+	LD HL, address
 	CALL puts
 	CALL make_hex
 	LD D,A
 	CALL make_hex
 	LD E,A
-	LD HL, end_add
-	CALL puts
-	LD BC,0000h
-	CALL make_hex
-	LD D,A
-	CALL make_hex
-	LD E,A
+	LD A, lf
+	CALL putc
+
+	LD A,(DE)
+	CALL putc
+	JP command_loop
+
 
 po_com:
 	LD HL, address
@@ -188,10 +201,6 @@ secloop:
 	
 	HALT		; stop cpu in the event that the program misbehaves 
 
-
-starttext:		; start message
-	DEFB "Ready", lf,0
-	
 	
 
 	;.ORG 00F0H
