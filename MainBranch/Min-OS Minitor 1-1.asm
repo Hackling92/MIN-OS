@@ -100,6 +100,30 @@ h3:
 	OR B
 	RET
 
+
+
+Num2Hex:
+	LD A,H
+	CALL Num1
+	LD D,A
+	LD A,H
+	CALL Num2
+	LD E,A
+
+Num1:
+	RRA
+	RRA
+	RRA
+	RRA
+Num2:
+	OR 240
+	DAA
+	ADD A,160
+	ADC A,40h
+	LD C,A
+	
+	RET
+
 ;-----------------------	
 	
 startloop:		; starting point for program	
@@ -164,6 +188,8 @@ command_msg:		; Enter Command message
 
 ;---------------------------------------------------
 pe_com:
+	LD A,lf
+	CALL putc
 	LD HL, address
 	CALL puts
 	CALL make_hex
@@ -174,6 +200,13 @@ pe_com:
 	CALL putc
 
 	LD A,(DE)
+	LD H,A
+	CALL Num2Hex
+	LD A,D
+	CALL putc
+	LD A,E
+	CALL putc
+	LD A,lf
 	CALL putc
 	JP command_loop
 
