@@ -20,11 +20,11 @@ lf	EQU 0Ah		; declair Line Feed
 inituart:
 	LD A,10000000b  ; set div latch enable 1
 	OUT (03h),A	; write lcr
-	LD A,0Ch		; set Divisor
+	LD A,01h	; set Divisor was 0x0C
 	OUT (00h),A	; dll 0x07 (#7)
 	LD A,00h
 	OUT (01h),A	; dlm 0x00
-	LD A,00000011b	; set dle to 0, break to 0, no parity, 1 stop bit, 8 bytes
+	LD A,00001011b	; set dle to 0, break to 0, odd parity, 1 stop bit, 8 bytes
 	OUT (03h),A	; write new configured lcr
 	JP startloop	; program start
 		
@@ -170,24 +170,8 @@ r_loop:
 	JP command_loop
 
 
-start_add:		; PE/PO Start Address
-	DEFB "Start Add: ",0
-end_add:		; PE End Address
-	DEFB "End Add: ",0
-new_dat:		; New Data For PO Command
-	DEFB "New Data: ",0
-address:		; Address Text
-	DEFB "Address: ",0
-starttext:		; start message
-	DEFB "Ready", lf,0
-command_msg:		; Enter Command message
-	DEFB "Command: ",0
-	
-	
-
-
 ;---------------------------------------------------
-pe_com:
+pe_com:			;Peek Command
 	LD A,lf
 	CALL putc
 	LD HL, address
@@ -198,7 +182,6 @@ pe_com:
 	LD E,A
 	LD A, lf
 	CALL putc
-
 	LD A,(DE)
 	LD H,A
 	CALL Num2Hex
@@ -211,13 +194,22 @@ pe_com:
 	JP command_loop
 
 
-po_com:
+po_com:			;Poke Command
 	LD HL, address
 	CALL puts
-	;add func here from above
-	LD HL, new_dat
+	CALL make_hex
+	LD D,A
+	CALL make_hex
+	LD E,A
+	LD A,lf
+	CALL putc
+	LD HL,data_msg
 	CALL puts
-	;add func here
+	CALL make_hex
+	LD (DE),A
+	LD A,lf
+	CALL putc
+	JP command_loop
 
 ;---------------------------------------------------
 
@@ -236,24 +228,30 @@ secloop:
 
 	
 
-	;.ORG 00F0H
-start:	
-	LD A, 1H
 
-loop:
-	CALL putc
-	LD B, A
-	LD A, 99h
-	CP B
-	JP Z, start
-	LD A, B
-	INC A
-	JP loop
 
-	.ORG 8100H
+;Strings
+;--------------------------------------------------
+start_add:		; PE/PO Start Address
+	DEFB "Start Add: ",0
+end_add:		; PE End Address
+	DEFB "End Add: ",0
+new_dat:		; New Data For PO Command
+	DEFB "New Data: ",0
+address:		; Address Text
+	DEFB "Address: ",0
+starttext:		; start message
+	DEFB "Ready", lf,0
+command_msg:		; Enter Command message
+	DEFB "Command: ",0
+data_msg:		; Data Message
+	DEFB "Data: ",0
+;--------------------------------------------------
+	
 
-	;LD HL,8110H
-	;LD DE,00F0H
-	;LD BC,32
-	;LDIR
-	JP 00FFH
+
+	.ORG 8100h
+	LD A,2
+	ADD A,2
+	LD (8200h),A
+	JP command_loop

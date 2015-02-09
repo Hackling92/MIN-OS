@@ -20,11 +20,11 @@
 0020   0004             inituart:
 0021   0004 3E 80       	LD A,10000000b  ; set div latch enable 1
 0022   0006 D3 03       	OUT (03h),A	; write lcr
-0023   0008 3E 0C       	LD A,0Ch		; set Divisor
+0023   0008 3E 01       	LD A,01h	; set Divisor was 0x0C
 0024   000A D3 00       	OUT (00h),A	; dll 0x07 (#7)
 0025   000C 3E 00       	LD A,00h
 0026   000E D3 01       	OUT (01h),A	; dlm 0x00
-0027   0010 3E 03       	LD A,00000011b	; set dle to 0, break to 0, no parity, 1 stop bit, 8 bytes
+0027   0010 3E 0B       	LD A,00001011b	; set dle to 0, break to 0, odd parity, 1 stop bit, 8 bytes
 0028   0012 D3 03       	OUT (03h),A	; write new configured lcr
 0029   0014 C3 7C 00    	JP startloop	; program start
 0030   0017             		
@@ -127,12 +127,12 @@
 0127   007C             ;-----------------------	
 0128   007C             	
 0129   007C             startloop:		; starting point for program	
-0130   007C 21 FC 00    	LD HL, starttext	;Load Start Message Location
+0130   007C 21 62 01    	LD HL, starttext	;Load Start Message Location
 0131   007F CD 1D 00    	CALL puts	; print start message
 0132   0082             
 0133   0082             ;----------------------------------------------
 0134   0082             command_loop:
-0135   0082 21 03 01    	LD HL,command_msg
+0135   0082 21 69 01    	LD HL,command_msg
 0136   0085 CD 1D 00    	CALL puts
 0137   0088 CD 36 00    	CALL uin
 0138   008B CD 17 00    	CALL putc
@@ -155,9 +155,9 @@
 0155   00AB CD 36 00    	CALL uin
 0156   00AE CD 17 00    	CALL putc
 0157   00B1 FE 45       	CP 45h		;PE COMMAND
-0158   00B3 CA 0D 01    	JP Z,pe_com
+0158   00B3 CA D1 00    	JP Z,pe_com
 0159   00B6 FE 4F       	CP 4Fh		;PO COMMAND
-0160   00B8 CA 3A 01    	JP Z,po_com
+0160   00B8 CA FE 00    	JP Z,po_com
 0161   00BB C3 82 00    	JP command_loop
 0162   00BE             
 0163   00BE             r_loop:
@@ -166,106 +166,105 @@
 0166   00C4 FE 53       	CP 53h		;RS COMMAND
 0167   00C6 CA 00 00    	JP Z,0000h
 0168   00C9 FE 50       	CP 50h		;RP COMMAND "REMOTE PROGRAM"
-0169   00CB CA 46 01    	JP Z,serial_program
+0169   00CB CA 23 01    	JP Z,serial_program
 0170   00CE C3 82 00    	JP command_loop
 0171   00D1             
 0172   00D1             
-0173   00D1             start_add:		; PE/PO Start Address
-0174   00D1 53 74 61 72 	DEFB "Start Add: ",0
-0174   00D5 74 20 41 64 
-0174   00D9 64 3A 20 00 
-0175   00DD             end_add:		; PE End Address
-0176   00DD 45 6E 64 20 	DEFB "End Add: ",0
-0176   00E1 41 64 64 3A 
-0176   00E5 20 00       
-0177   00E7             new_dat:		; New Data For PO Command
-0178   00E7 4E 65 77 20 	DEFB "New Data: ",0
-0178   00EB 44 61 74 61 
-0178   00EF 3A 20 00    
-0179   00F2             address:		; Address Text
-0180   00F2 41 64 64 72 	DEFB "Address: ",0
-0180   00F6 65 73 73 3A 
-0180   00FA 20 00       
-0181   00FC             starttext:		; start message
-0182   00FC 52 65 61 64 	DEFB "Ready", lf,0
-0182   0100 79 0A 00    
-0183   0103             command_msg:		; Enter Command message
-0184   0103 43 6F 6D 6D 	DEFB "Command: ",0
-0184   0107 61 6E 64 3A 
-0184   010B 20 00       
-0185   010D             	
-0186   010D             	
-0187   010D             
-0188   010D             
-0189   010D             ;---------------------------------------------------
-0190   010D             pe_com:
-0191   010D 3E 0A       	LD A,lf
-0192   010F CD 17 00    	CALL putc
-0193   0112 21 F2 00    	LD HL, address
-0194   0115 CD 1D 00    	CALL puts
-0195   0118 CD 40 00    	CALL make_hex
-0196   011B 57          	LD D,A
-0197   011C CD 40 00    	CALL make_hex
-0198   011F 5F          	LD E,A
-0199   0120 3E 0A       	LD A, lf
-0200   0122 CD 17 00    	CALL putc
-0201   0125             
-0202   0125 1A          	LD A,(DE)
-0203   0126 67          	LD H,A
-0204   0127 CD 65 00    	CALL Num2Hex
-0205   012A 7A          	LD A,D
-0206   012B CD 17 00    	CALL putc
-0207   012E 7B          	LD A,E
-0208   012F CD 17 00    	CALL putc
-0209   0132 3E 0A       	LD A,lf
-0210   0134 CD 17 00    	CALL putc
-0211   0137 C3 82 00    	JP command_loop
-0212   013A             
-0213   013A             
-0214   013A             po_com:
-0215   013A 21 F2 00    	LD HL, address
-0216   013D CD 1D 00    	CALL puts
-0217   0140             	;add func here from above
-0218   0140 21 E7 00    	LD HL, new_dat
-0219   0143 CD 1D 00    	CALL puts
-0220   0146             	;add func here
-0221   0146             
-0222   0146             ;---------------------------------------------------
-0223   0146             
-0224   0146             serial_program:
-0225   0146 21 00 81    	LD HL,8100h	; set location to store program sent from serial terminal
-0226   0149             secloop:
-0227   0149 CD 36 00    	CALL uin
-0228   014C CD 17 00    	CALL putc
-0229   014F FE 7F       	CP 7Fh		; Check for delete to know when to execute program in ram
-0230   0151 CA 00 81    	JP Z,8100h	; If delete jump to ram location
-0231   0154 77          	LD (HL),A	; used to store above hex into memory
-0232   0155 23          	INC HL		; incriment hl for next byte
-0233   0156 C3 49 01    	JP secloop	; loop until makehex finds 'del', then execute jump to 8100h
-0234   0159             	
-0235   0159 76          	HALT		; stop cpu in the event that the program misbehaves 
-0236   015A             
-0237   015A             	
-0238   015A             
-0239   015A             	;.ORG 00F0H
-0240   015A             start:	
-0241   015A 3E 01       	LD A, 1H
-0242   015C             
-0243   015C             loop:
-0244   015C CD 17 00    	CALL putc
-0245   015F 47          	LD B, A
-0246   0160 3E 99       	LD A, 99h
-0247   0162 B8          	CP B
-0248   0163 CA 5A 01    	JP Z, start
-0249   0166 78          	LD A, B
-0250   0167 3C          	INC A
-0251   0168 C3 5C 01    	JP loop
-0252   016B             
-0253   016B             	.ORG 8100H
-0254   8100             
-0255   8100             	;LD HL,8110H
-0256   8100             	;LD DE,00F0H
-0257   8100             	;LD BC,32
-0258   8100             	;LDIR
-0259   8100 C3 FF 00    	JP 00FFH
+0173   00D1             ;---------------------------------------------------
+0174   00D1             pe_com:			;Peek Command
+0175   00D1 3E 0A       	LD A,lf
+0176   00D3 CD 17 00    	CALL putc
+0177   00D6 21 58 01    	LD HL, address
+0178   00D9 CD 1D 00    	CALL puts
+0179   00DC CD 40 00    	CALL make_hex
+0180   00DF 57          	LD D,A
+0181   00E0 CD 40 00    	CALL make_hex
+0182   00E3 5F          	LD E,A
+0183   00E4 3E 0A       	LD A, lf
+0184   00E6 CD 17 00    	CALL putc
+0185   00E9 1A          	LD A,(DE)
+0186   00EA 67          	LD H,A
+0187   00EB CD 65 00    	CALL Num2Hex
+0188   00EE 7A          	LD A,D
+0189   00EF CD 17 00    	CALL putc
+0190   00F2 7B          	LD A,E
+0191   00F3 CD 17 00    	CALL putc
+0192   00F6 3E 0A       	LD A,lf
+0193   00F8 CD 17 00    	CALL putc
+0194   00FB C3 82 00    	JP command_loop
+0195   00FE             
+0196   00FE             
+0197   00FE             po_com:			;Poke Command
+0198   00FE 21 58 01    	LD HL, address
+0199   0101 CD 1D 00    	CALL puts
+0200   0104 CD 40 00    	CALL make_hex
+0201   0107 57          	LD D,A
+0202   0108 CD 40 00    	CALL make_hex
+0203   010B 5F          	LD E,A
+0204   010C 3E 0A       	LD A,lf
+0205   010E CD 17 00    	CALL putc
+0206   0111 21 73 01    	LD HL,data_msg
+0207   0114 CD 1D 00    	CALL puts
+0208   0117 CD 40 00    	CALL make_hex
+0209   011A 12          	LD (DE),A
+0210   011B 3E 0A       	LD A,lf
+0211   011D CD 17 00    	CALL putc
+0212   0120 C3 82 00    	JP command_loop
+0213   0123             
+0214   0123             ;---------------------------------------------------
+0215   0123             
+0216   0123             serial_program:
+0217   0123 21 00 81    	LD HL,8100h	; set location to store program sent from serial terminal
+0218   0126             secloop:
+0219   0126 CD 36 00    	CALL uin
+0220   0129 CD 17 00    	CALL putc
+0221   012C FE 7F       	CP 7Fh		; Check for delete to know when to execute program in ram
+0222   012E CA 00 81    	JP Z,8100h	; If delete jump to ram location
+0223   0131 77          	LD (HL),A	; used to store above hex into memory
+0224   0132 23          	INC HL		; incriment hl for next byte
+0225   0133 C3 26 01    	JP secloop	; loop until makehex finds 'del', then execute jump to 8100h
+0226   0136             	
+0227   0136 76          	HALT		; stop cpu in the event that the program misbehaves 
+0228   0137             
+0229   0137             	
+0230   0137             
+0231   0137             
+0232   0137             
+0233   0137             ;Strings
+0234   0137             ;--------------------------------------------------
+0235   0137             start_add:		; PE/PO Start Address
+0236   0137 53 74 61 72 	DEFB "Start Add: ",0
+0236   013B 74 20 41 64 
+0236   013F 64 3A 20 00 
+0237   0143             end_add:		; PE End Address
+0238   0143 45 6E 64 20 	DEFB "End Add: ",0
+0238   0147 41 64 64 3A 
+0238   014B 20 00       
+0239   014D             new_dat:		; New Data For PO Command
+0240   014D 4E 65 77 20 	DEFB "New Data: ",0
+0240   0151 44 61 74 61 
+0240   0155 3A 20 00    
+0241   0158             address:		; Address Text
+0242   0158 41 64 64 72 	DEFB "Address: ",0
+0242   015C 65 73 73 3A 
+0242   0160 20 00       
+0243   0162             starttext:		; start message
+0244   0162 52 65 61 64 	DEFB "Ready", lf,0
+0244   0166 79 0A 00    
+0245   0169             command_msg:		; Enter Command message
+0246   0169 43 6F 6D 6D 	DEFB "Command: ",0
+0246   016D 61 6E 64 3A 
+0246   0171 20 00       
+0247   0173             data_msg:		; Data Message
+0248   0173 44 61 74 61 	DEFB "Data: ",0
+0248   0177 3A 20 00    
+0249   017A             ;--------------------------------------------------
+0250   017A             	
+0251   017A             
+0252   017A             
+0253   017A             	.ORG 8100h
+0254   8100 3E 02       	LD A,2
+0255   8102 C6 02       	ADD A,2
+0256   8104 32 00 82    	LD (8200h),A
+0257   8107 C3 82 00    	JP command_loop
 Number of errors = 0
