@@ -158,6 +158,8 @@ p_loop:
 	JP Z,pe_com
 	CP 4Fh		;PO COMMAND
 	JP Z,po_com
+	CP 2Bh		;P+ COMMAND
+	JP Z,p_plus_com
 	JP command_loop
 
 r_loop:
@@ -210,6 +212,28 @@ po_com:			;Poke Command
 	LD A,lf
 	CALL putc
 	JP command_loop
+
+
+p_plus_com:		;Poke Command With Auto Inc
+	LD HL,start_add
+	CALL puts
+	CALL make_hex
+	LD D,A
+	CALL make_hex
+	LD E,A
+	LD A,lf
+	CALL putc
+p_plus_com_loop_1:
+	LD HL,data_msg
+	CALL puts
+	CALL make_hex
+	LD (DE),A
+	LD A,lf
+	CALL putc
+	INC DE
+	CP 7Fh		;DEL
+	JP Z,command_loop
+	JP p_plus_com_loop_1
 
 ;---------------------------------------------------
 
