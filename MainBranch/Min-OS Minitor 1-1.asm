@@ -20,7 +20,7 @@ lf	EQU 0Ah		; declair Line Feed
 inituart:
 	LD A,10000000b  ; set div latch enable 1
 	OUT (03h),A	; write lcr
-	LD A,01h	; set Divisor was 0x0C
+	LD A,01h	; set Divisor to 1 for 115200 baud
 	OUT (00h),A	; dll 0x07 (#7)
 	LD A,00h
 	OUT (01h),A	; dlm 0x00
@@ -69,6 +69,17 @@ uin:			;Get Charactor
 	BIT 0,A
 	JP Z,uin
 	IN A,(00h)
+	CP 58h		;X
+	JP Z,command_loop_aborted
+	RET
+
+
+;-----------------------
+
+new_line:			;Print Line Feed
+	CALL tx_ready
+	LD A, lf
+	OUT (00h), A
 	RET
 
 
@@ -126,12 +137,17 @@ Num2:
 
 ;-----------------------	
 	
-startloop:		; starting point for program	
-	LD HL, starttext	;Load Start Message Location
-	CALL puts	; print start message
+startloop:			; starting point for program	
+	LD HL, starttext	; Load Start Message Location
+	CALL puts		; print start message
+	JP command_loop
 
 ;----------------------------------------------
+command_loop_aborted:
+	LD HL, abort_msg
+	CALL puts
 command_loop:
+	CALL new_line
 	LD HL,command_msg
 	CALL puts
 	CALL uin
@@ -174,16 +190,14 @@ r_loop:
 
 ;---------------------------------------------------
 pe_com:			;Peek Command
-	LD A,lf
-	CALL putc
+	CALL new_line
 	LD HL, address
 	CALL puts
 	CALL make_hex
 	LD D,A
 	CALL make_hex
 	LD E,A
-	LD A, lf
-	CALL putc
+	CALL new_line
 	LD A,(DE)
 	LD H,A
 	CALL Num2Hex
@@ -191,48 +205,43 @@ pe_com:			;Peek Command
 	CALL putc
 	LD A,E
 	CALL putc
-	LD A,lf
-	CALL putc
+	CALL new_line
 	JP command_loop
 
 
 po_com:			;Poke Command
+	CALL new_line
 	LD HL, address
 	CALL puts
 	CALL make_hex
 	LD D,A
 	CALL make_hex
 	LD E,A
-	LD A,lf
-	CALL putc
+	CALL new_line
 	LD HL,data_msg
 	CALL puts
 	CALL make_hex
 	LD (DE),A
-	LD A,lf
-	CALL putc
+	CALL new_line
 	JP command_loop
 
 
 p_plus_com:		;Poke Command With Auto Inc
+	CALL new_line
 	LD HL,start_add
 	CALL puts
 	CALL make_hex
 	LD D,A
 	CALL make_hex
 	LD E,A
-	LD A,lf
-	CALL putc
+	CALL new_line
 p_plus_com_loop_1:
 	LD HL,data_msg
 	CALL puts
 	CALL make_hex
 	LD (DE),A
-	LD A,lf
-	CALL putc
+	CALL new_line
 	INC DE
-	CP 7Fh		;DEL
-	JP Z,command_loop
 	JP p_plus_com_loop_1
 
 ;---------------------------------------------------
@@ -270,6 +279,8 @@ command_msg:		; Enter Command message
 	DEFB "Command: ",0
 data_msg:		; Data Message
 	DEFB "Data: ",0
+abort_msg:		; Abort Message
+	DEFB "Aborted", lf, lf,0
 ;--------------------------------------------------
 	
 
