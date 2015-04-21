@@ -69,6 +69,7 @@ uin:			;Get Charactor
 	BIT 0,A
 	JP Z,uin
 	IN A,(00h)
+	CALL make_uppercase
 	CP 58h		;X
 	JP Z,command_loop_aborted
 	RET
@@ -135,7 +136,22 @@ Num2:
 	
 	RET
 
-;-----------------------	
+
+;-----------------------
+
+make_uppercase:			;Makes lowercase Hex uppercase Hex
+
+	CP 60h
+	JP c,make_uppercase_end	;This in conjuntion with the line below check to see of A was less then 60h
+	JP z,make_uppercase_end
+
+	LD B,20h		;Subtract 20h to convert lowercase to uppercase
+	SUB B
+	RET
+make_uppercase_end:
+	RET
+
+;-----------------------
 	
 startloop:			; starting point for program	
 	LD HL, starttext	; Load Start Message Location
@@ -286,7 +302,7 @@ abort_msg:		; Abort Message
 
 
 	.ORG 8100h
-	LD A,2
-	ADD A,2
+	LD A,07h
+	NEG
 	LD (8200h),A
 	JP command_loop
