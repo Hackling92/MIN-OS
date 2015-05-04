@@ -152,6 +152,44 @@ make_uppercase_end:
 	RET
 
 ;-----------------------
+
+get_string:
+	LD HL,8000h
+get_string_2:
+	CALL uin
+	CP 0Dh
+	JP Z,get_string_1
+	LD (HL),A
+	INC HL
+	JP get_string_2
+get_string_1:
+	LD (HL),00h
+	RET
+
+;-----------------------
+
+string_cmp:
+	LD DE,8000h
+string_cmp_2:
+	LD A,(DE)
+	CP (HL)
+	JP Z,string_cmp_1
+	JP string_cmp_fail
+string_cmp_1:
+	LD A,(HL)
+	CP 0h
+	JP Z,string_cmp_pass
+	INC HL
+	INC DE
+	JP string_cmp_2
+string_cmp_fail:
+	LD B,0h
+	RET
+string_cmp_pass:
+	LD B,1h
+	RET
+
+;-----------------------
 	
 startloop:			; starting point for program	
 	LD HL, starttext	; Load Start Message Location
@@ -290,19 +328,19 @@ new_dat:		; New Data For PO Command
 address:		; Address Text
 	DEFB "Address: ",0
 starttext:		; start message
-	DEFB "Ready", lf,0
+	DEFB "READY", lf,0
 command_msg:		; Enter Command message
 	DEFB "Command: ",0
 data_msg:		; Data Message
 	DEFB "Data: ",0
 abort_msg:		; Abort Message
-	DEFB "Aborted", lf, lf,0
+	DEFB "Aborted", lf,0
 ;--------------------------------------------------
 	
 
 
 	.ORG 8100h
-	LD A,07h
-	NEG
-	LD (8200h),A
-	JP command_loop
+	CALL get_string
+	LD HL,starttext
+	CALL string_cmp
+	JP startloop

@@ -15,309 +15,347 @@
 0015   0001             lf	EQU 0Ah		; declair Line Feed
 0016   0001             
 0017   0001 31 FF 88    	LD SP,88FFh	; set the stack pointer
-0018   0004             
-0019   0004             
-0020   0004             inituart:
-0021   0004 3E 80       	LD A,10000000b  ; set div latch enable 1
-0022   0006 D3 03       	OUT (03h),A	; write lcr
-0023   0008 3E 01       	LD A,01h	; set Divisor to 1 for 115200 baud
-0024   000A D3 00       	OUT (00h),A	; dll 0x07 (#7)
-0025   000C 3E 00       	LD A,00h
-0026   000E D3 01       	OUT (01h),A	; dlm 0x00
-0027   0010 3E 0B       	LD A,00001011b	; set dle to 0, break to 0, odd parity, 1 stop bit, 8 bytes
-0028   0012 D3 03       	OUT (03h),A	; write new configured lcr
-0029   0014 C3 99 00    	JP startloop	; program start
-0030   0017             		
-0031   0017             
-0032   0017             ;-----------------------
-0033   0017             putc:			;Put Charactor Loop
-0034   0017 CD 2D 00    	CALL tx_ready
-0035   001A D3 00       	OUT (00h), A
-0036   001C C9          	RET
-0037   001D             
-0038   001D             puts:			;Put String Loop
-0039   001D F5          	PUSH AF
-0040   001E E5          	PUSH HL
-0041   001F             puts_loop:
-0042   001F 7E          	LD A, (HL)
-0043   0020 FE 00       	CP 0
-0044   0022 28 06       	JR Z, puts_end
-0045   0024 CD 17 00    	CALL putc
-0046   0027 23          	INC HL
-0047   0028 18 F5       	JR puts_loop
-0048   002A             puts_end:
-0049   002A E1          	POP HL
-0050   002B F1          	POP AF
-0051   002C C9          	RET
-0052   002D             ;-----------------------
-0053   002D             
-0054   002D             
-0055   002D             tx_ready:		;Check For Charactor In UART
-0056   002D F5          	PUSH AF
-0057   002E             tx_ready_loop:
-0058   002E DB 05       	IN A, (05h)
-0059   0030 CB 6F       	BIT 5, A
-0060   0032 28 FA       	JR Z, tx_ready_loop
-0061   0034 F1          	POP AF
-0062   0035 C9          	RET
-0063   0036             
-0064   0036             
-0065   0036             ;-----------------------
-0066   0036             
-0067   0036             uin:			;Get Charactor
-0068   0036 DB 05       	IN A, (05h)
-0069   0038 CB 47       	BIT 0,A
-0070   003A CA 36 00    	JP Z,uin
-0071   003D DB 00       	IN A,(00h)
-0072   003F CD 8C 00    	CALL make_uppercase
-0073   0042 FE 58       	CP 58h		;X
-0074   0044 CA A2 00    	JP Z,command_loop_aborted
-0075   0047 C9          	RET
-0076   0048             
-0077   0048             
-0078   0048             ;-----------------------
-0079   0048             
-0080   0048             new_line:			;Print Line Feed
-0081   0048 CD 2D 00    	CALL tx_ready
-0082   004B 3E 0A       	LD A, lf
-0083   004D D3 00       	OUT (00h), A
-0084   004F C9          	RET
-0085   0050             
-0086   0050             
-0087   0050             ;-----------------------
-0088   0050             
-0089   0050             make_hex:		; convert ascii from uart to hex
-0090   0050 06 00       	LD B,0
-0091   0052 CD 5A 00    	CALL h1
-0092   0055 07          	RLCA
-0093   0056 07          	RLCA
-0094   0057 07          	RLCA
-0095   0058 07          	RLCA
-0096   0059 47          	LD B,A
-0097   005A             h1:
-0098   005A CD 36 00    	CALL uin
-0099   005D 4F          	LD C,A
-0100   005E CD 17 00    	CALL putc
-0101   0061 E6 70       	AND 070h
-0102   0063 FE 40       	CP 040h
-0103   0065 DA 70 00    	JP C,h2
-0104   0068 79          	LD A,C
-0105   0069 E6 0F       	AND 00Fh
-0106   006B C6 09       	ADD A,9
-0107   006D C3 73 00    	JP h3
-0108   0070             h2:
-0109   0070 79          	LD A,C
-0110   0071 E6 0F       	AND 00Fh
-0111   0073             h3:
-0112   0073 B0          	OR B
-0113   0074 C9          	RET
-0114   0075             
-0115   0075             
-0116   0075             
-0117   0075             Num2Hex:
-0118   0075 7C          	LD A,H
-0119   0076 CD 7F 00    	CALL Num1
-0120   0079 57          	LD D,A
-0121   007A 7C          	LD A,H
-0122   007B CD 83 00    	CALL Num2
-0123   007E 5F          	LD E,A
-0124   007F             
-0125   007F             Num1:
-0126   007F 1F          	RRA
-0127   0080 1F          	RRA
-0128   0081 1F          	RRA
-0129   0082 1F          	RRA
-0130   0083             Num2:
-0131   0083 F6 F0       	OR 240
-0132   0085 27          	DAA
-0133   0086 C6 A0       	ADD A,160
-0134   0088 CE 40       	ADC A,40h
-0135   008A 4F          	LD C,A
-0136   008B             	
-0137   008B C9          	RET
-0138   008C             
-0139   008C             
-0140   008C             ;-----------------------
-0141   008C             
-0142   008C             make_uppercase:			;Makes lowercase Hex uppercase Hex
-0143   008C             
-0144   008C FE 60       	CP 60h
-0145   008E DA 98 00    	JP c,make_uppercase_end	;This in conjuntion with the line below check to see of A was less then 60h
-0146   0091 CA 98 00    	JP z,make_uppercase_end
-0147   0094             
-0148   0094 06 20       	LD B,20h		;Subtract 20h to convert lowercase to uppercase
-0149   0096 90          	SUB B
-0150   0097 C9          	RET
-0151   0098             make_uppercase_end:
-0152   0098 C9          	RET
-0153   0099             
-0154   0099             ;-----------------------
-0155   0099             	
-0156   0099             startloop:			; starting point for program	
-0157   0099 21 AE 01    	LD HL, starttext	; Load Start Message Location
-0158   009C CD 1D 00    	CALL puts		; print start message
-0159   009F C3 A8 00    	JP command_loop
-0160   00A2             
-0161   00A2             ;----------------------------------------------
-0162   00A2             command_loop_aborted:
-0163   00A2 21 C6 01    	LD HL, abort_msg
-0164   00A5 CD 1D 00    	CALL puts
-0165   00A8             command_loop:
-0166   00A8 CD 48 00    	CALL new_line
-0167   00AB 21 B5 01    	LD HL,command_msg
-0168   00AE CD 1D 00    	CALL puts
-0169   00B1 CD 36 00    	CALL uin
-0170   00B4 CD 17 00    	CALL putc
-0171   00B7 FE 4A       	CP 4Ah
-0172   00B9 CA C6 00    	JP Z,j_loop
-0173   00BC FE 50       	CP 50h
-0174   00BE CA D4 00    	JP Z,p_loop
-0175   00C1 FE 52       	CP 52h
-0176   00C3 CA EC 00    	JP Z,r_loop
-0177   00C6             
-0178   00C6             
-0179   00C6             j_loop:
-0180   00C6 CD 36 00    	CALL uin
-0181   00C9 CD 17 00    	CALL putc
-0182   00CC FE 4D       	CP 4Dh		;JM COMMAND
-0183   00CE CA 00 81    	JP Z,8100h
-0184   00D1 C3 A8 00    	JP command_loop
-0185   00D4             
-0186   00D4             p_loop:
-0187   00D4 CD 36 00    	CALL uin
-0188   00D7 CD 17 00    	CALL putc
-0189   00DA FE 45       	CP 45h		;PE COMMAND
-0190   00DC CA FF 00    	JP Z,pe_com
-0191   00DF FE 4F       	CP 4Fh		;PO COMMAND
-0192   00E1 CA 26 01    	JP Z,po_com
-0193   00E4 FE 2B       	CP 2Bh		;P+ COMMAND
-0194   00E6 CA 4A 01    	JP Z,p_plus_com
-0195   00E9 C3 A8 00    	JP command_loop
-0196   00EC             
-0197   00EC             r_loop:
-0198   00EC CD 36 00    	CALL uin
-0199   00EF CD 17 00    	CALL putc
-0200   00F2 FE 53       	CP 53h		;RS COMMAND
-0201   00F4 CA 00 00    	JP Z,0000h
-0202   00F7 FE 50       	CP 50h		;RP COMMAND "REMOTE PROGRAM"
-0203   00F9 CA 6F 01    	JP Z,serial_program
-0204   00FC C3 A8 00    	JP command_loop
-0205   00FF             
-0206   00FF             
-0207   00FF             ;---------------------------------------------------
-0208   00FF             pe_com:			;Peek Command
-0209   00FF CD 48 00    	CALL new_line
-0210   0102 21 A4 01    	LD HL, address
-0211   0105 CD 1D 00    	CALL puts
-0212   0108 CD 50 00    	CALL make_hex
-0213   010B 57          	LD D,A
-0214   010C CD 50 00    	CALL make_hex
-0215   010F 5F          	LD E,A
-0216   0110 CD 48 00    	CALL new_line
-0217   0113 1A          	LD A,(DE)
-0218   0114 67          	LD H,A
-0219   0115 CD 75 00    	CALL Num2Hex
-0220   0118 7A          	LD A,D
-0221   0119 CD 17 00    	CALL putc
-0222   011C 7B          	LD A,E
-0223   011D CD 17 00    	CALL putc
-0224   0120 CD 48 00    	CALL new_line
-0225   0123 C3 A8 00    	JP command_loop
-0226   0126             
-0227   0126             
-0228   0126             po_com:			;Poke Command
-0229   0126 CD 48 00    	CALL new_line
-0230   0129 21 A4 01    	LD HL, address
-0231   012C CD 1D 00    	CALL puts
-0232   012F CD 50 00    	CALL make_hex
-0233   0132 57          	LD D,A
-0234   0133 CD 50 00    	CALL make_hex
-0235   0136 5F          	LD E,A
-0236   0137 CD 48 00    	CALL new_line
-0237   013A 21 BF 01    	LD HL,data_msg
-0238   013D CD 1D 00    	CALL puts
-0239   0140 CD 50 00    	CALL make_hex
-0240   0143 12          	LD (DE),A
-0241   0144 CD 48 00    	CALL new_line
-0242   0147 C3 A8 00    	JP command_loop
-0243   014A             
-0244   014A             
-0245   014A             p_plus_com:		;Poke Command With Auto Inc
-0246   014A CD 48 00    	CALL new_line
-0247   014D 21 83 01    	LD HL,start_add
-0248   0150 CD 1D 00    	CALL puts
-0249   0153 CD 50 00    	CALL make_hex
-0250   0156 57          	LD D,A
-0251   0157 CD 50 00    	CALL make_hex
-0252   015A 5F          	LD E,A
-0253   015B CD 48 00    	CALL new_line
-0254   015E             p_plus_com_loop_1:
-0255   015E 21 BF 01    	LD HL,data_msg
-0256   0161 CD 1D 00    	CALL puts
-0257   0164 CD 50 00    	CALL make_hex
-0258   0167 12          	LD (DE),A
-0259   0168 CD 48 00    	CALL new_line
-0260   016B 13          	INC DE
-0261   016C C3 5E 01    	JP p_plus_com_loop_1
-0262   016F             
-0263   016F             ;---------------------------------------------------
-0264   016F             
-0265   016F             serial_program:
-0266   016F 21 00 81    	LD HL,8100h	; set location to store program sent from serial terminal
-0267   0172             secloop:
-0268   0172 CD 36 00    	CALL uin
-0269   0175 CD 17 00    	CALL putc
-0270   0178 FE 7F       	CP 7Fh		; Check for delete to know when to execute program in ram
-0271   017A CA 00 81    	JP Z,8100h	; If delete jump to ram location
-0272   017D 77          	LD (HL),A	; used to store above hex into memory
-0273   017E 23          	INC HL		; incriment hl for next byte
-0274   017F C3 72 01    	JP secloop	; loop until makehex finds 'del', then execute jump to 8100h
-0275   0182             	
-0276   0182 76          	HALT		; stop cpu in the event that the program misbehaves 
-0277   0183             
-0278   0183             	
-0279   0183             
-0280   0183             
-0281   0183             
-0282   0183             ;Strings
-0283   0183             ;--------------------------------------------------
-0284   0183             start_add:		; PE/PO Start Address
-0285   0183 53 74 61 72 	DEFB "Start Add: ",0
-0285   0187 74 20 41 64 
-0285   018B 64 3A 20 00 
-0286   018F             end_add:		; PE End Address
-0287   018F 45 6E 64 20 	DEFB "End Add: ",0
-0287   0193 41 64 64 3A 
-0287   0197 20 00       
-0288   0199             new_dat:		; New Data For PO Command
-0289   0199 4E 65 77 20 	DEFB "New Data: ",0
-0289   019D 44 61 74 61 
-0289   01A1 3A 20 00    
-0290   01A4             address:		; Address Text
-0291   01A4 41 64 64 72 	DEFB "Address: ",0
-0291   01A8 65 73 73 3A 
-0291   01AC 20 00       
-0292   01AE             starttext:		; start message
-0293   01AE 52 65 61 64 	DEFB "Ready", lf,0
-0293   01B2 79 0A 00    
-0294   01B5             command_msg:		; Enter Command message
-0295   01B5 43 6F 6D 6D 	DEFB "Command: ",0
-0295   01B9 61 6E 64 3A 
-0295   01BD 20 00       
-0296   01BF             data_msg:		; Data Message
-0297   01BF 44 61 74 61 	DEFB "Data: ",0
-0297   01C3 3A 20 00    
-0298   01C6             abort_msg:		; Abort Message
-0299   01C6 41 62 6F 72 	DEFB "Aborted", lf, lf,0
-0299   01CA 74 65 64 0A 
-0299   01CE 0A 00       
-0300   01D0             ;--------------------------------------------------
-0301   01D0             	
-0302   01D0             
-0303   01D0             
-0304   01D0             	.ORG 8100h
-0305   8100 3E 07       	LD A,07h
-0306   8102 ED 44       	NEG
-0307   8104 32 00 82    	LD (8200h),A
-0308   8107 C3 A8 00    	JP command_loop
+0018   0004 C3 00 81    	JP 8100h
+0019   0007             
+0020   0007             inituart:
+0021   0007 3E 80       	LD A,10000000b  ; set div latch enable 1
+0022   0009 D3 03       	OUT (03h),A	; write lcr
+0023   000B 3E 01       	LD A,01h	; set Divisor to 1 for 115200 baud
+0024   000D D3 00       	OUT (00h),A	; dll 0x07 (#7)
+0025   000F 3E 00       	LD A,00h
+0026   0011 D3 01       	OUT (01h),A	; dlm 0x00
+0027   0013 3E 0B       	LD A,00001011b	; set dle to 0, break to 0, odd parity, 1 stop bit, 8 bytes
+0028   0015 D3 03       	OUT (03h),A	; write new configured lcr
+0029   0017 C3 CB 00    	JP startloop	; program start
+0030   001A             		
+0031   001A             
+0032   001A             ;-----------------------
+0033   001A             putc:			;Put Charactor Loop
+0034   001A CD 30 00    	CALL tx_ready
+0035   001D D3 00       	OUT (00h), A
+0036   001F C9          	RET
+0037   0020             
+0038   0020             puts:			;Put String Loop
+0039   0020 F5          	PUSH AF
+0040   0021 E5          	PUSH HL
+0041   0022             puts_loop:
+0042   0022 7E          	LD A, (HL)
+0043   0023 FE 00       	CP 0
+0044   0025 28 06       	JR Z, puts_end
+0045   0027 CD 1A 00    	CALL putc
+0046   002A 23          	INC HL
+0047   002B 18 F5       	JR puts_loop
+0048   002D             puts_end:
+0049   002D E1          	POP HL
+0050   002E F1          	POP AF
+0051   002F C9          	RET
+0052   0030             ;-----------------------
+0053   0030             
+0054   0030             
+0055   0030             tx_ready:		;Check For Charactor In UART
+0056   0030 F5          	PUSH AF
+0057   0031             tx_ready_loop:
+0058   0031 DB 05       	IN A, (05h)
+0059   0033 CB 6F       	BIT 5, A
+0060   0035 28 FA       	JR Z, tx_ready_loop
+0061   0037 F1          	POP AF
+0062   0038 C9          	RET
+0063   0039             
+0064   0039             
+0065   0039             ;-----------------------
+0066   0039             
+0067   0039             uin:			;Get Charactor
+0068   0039 DB 05       	IN A, (05h)
+0069   003B CB 47       	BIT 0,A
+0070   003D CA 39 00    	JP Z,uin
+0071   0040 DB 00       	IN A,(00h)
+0072   0042 CD 8F 00    	CALL make_uppercase
+0073   0045 FE 58       	CP 58h		;X
+0074   0047 CA D4 00    	JP Z,command_loop_aborted
+0075   004A C9          	RET
+0076   004B             
+0077   004B             
+0078   004B             ;-----------------------
+0079   004B             
+0080   004B             new_line:			;Print Line Feed
+0081   004B CD 30 00    	CALL tx_ready
+0082   004E 3E 0A       	LD A, lf
+0083   0050 D3 00       	OUT (00h), A
+0084   0052 C9          	RET
+0085   0053             
+0086   0053             
+0087   0053             ;-----------------------
+0088   0053             
+0089   0053             make_hex:		; convert ascii from uart to hex
+0090   0053 06 00       	LD B,0
+0091   0055 CD 5D 00    	CALL h1
+0092   0058 07          	RLCA
+0093   0059 07          	RLCA
+0094   005A 07          	RLCA
+0095   005B 07          	RLCA
+0096   005C 47          	LD B,A
+0097   005D             h1:
+0098   005D CD 39 00    	CALL uin
+0099   0060 4F          	LD C,A
+0100   0061 CD 1A 00    	CALL putc
+0101   0064 E6 70       	AND 070h
+0102   0066 FE 40       	CP 040h
+0103   0068 DA 73 00    	JP C,h2
+0104   006B 79          	LD A,C
+0105   006C E6 0F       	AND 00Fh
+0106   006E C6 09       	ADD A,9
+0107   0070 C3 76 00    	JP h3
+0108   0073             h2:
+0109   0073 79          	LD A,C
+0110   0074 E6 0F       	AND 00Fh
+0111   0076             h3:
+0112   0076 B0          	OR B
+0113   0077 C9          	RET
+0114   0078             
+0115   0078             
+0116   0078             
+0117   0078             Num2Hex:
+0118   0078 7C          	LD A,H
+0119   0079 CD 82 00    	CALL Num1
+0120   007C 57          	LD D,A
+0121   007D 7C          	LD A,H
+0122   007E CD 86 00    	CALL Num2
+0123   0081 5F          	LD E,A
+0124   0082             
+0125   0082             Num1:
+0126   0082 1F          	RRA
+0127   0083 1F          	RRA
+0128   0084 1F          	RRA
+0129   0085 1F          	RRA
+0130   0086             Num2:
+0131   0086 F6 F0       	OR 240
+0132   0088 27          	DAA
+0133   0089 C6 A0       	ADD A,160
+0134   008B CE 40       	ADC A,40h
+0135   008D 4F          	LD C,A
+0136   008E             	
+0137   008E C9          	RET
+0138   008F             
+0139   008F             
+0140   008F             ;-----------------------
+0141   008F             
+0142   008F             make_uppercase:			;Makes lowercase Hex uppercase Hex
+0143   008F             
+0144   008F FE 60       	CP 60h
+0145   0091 DA 9B 00    	JP c,make_uppercase_end	;This in conjuntion with the line below check to see of A was less then 60h
+0146   0094 CA 9B 00    	JP z,make_uppercase_end
+0147   0097             
+0148   0097 06 20       	LD B,20h		;Subtract 20h to convert lowercase to uppercase
+0149   0099 90          	SUB B
+0150   009A C9          	RET
+0151   009B             make_uppercase_end:
+0152   009B C9          	RET
+0153   009C             
+0154   009C             ;-----------------------
+0155   009C             
+0156   009C             get_string:
+0157   009C 21 00 80    	LD HL,8000h
+0158   009F             get_string_2:
+0159   009F CD 39 00    	CALL uin
+0160   00A2 FE 0D       	CP 0Dh
+0161   00A4 CA AC 00    	JP Z,get_string_1
+0162   00A7 77          	LD (HL),A
+0163   00A8 23          	INC HL
+0164   00A9 C3 9F 00    	JP get_string_2
+0165   00AC             get_string_1:
+0166   00AC 36 00       	LD (HL),00h
+0167   00AE C9          	RET
+0168   00AF             
+0169   00AF             ;-----------------------
+0170   00AF             
+0171   00AF             string_cmp:
+0172   00AF 11 00 80    	LD DE,8000h
+0173   00B2             string_cmp_2:
+0174   00B2 1A          	LD A,(DE)
+0175   00B3 BE          	CP (HL)
+0176   00B4 CA BA 00    	JP Z,string_cmp_1
+0177   00B7 C3 C5 00    	JP string_cmp_fail
+0178   00BA             string_cmp_1:
+0179   00BA 7E          	LD A,(HL)
+0180   00BB FE 00       	CP 0h
+0181   00BD CA C8 00    	JP Z,string_cmp_pass
+0182   00C0 23          	INC HL
+0183   00C1 13          	INC DE
+0184   00C2 C3 B2 00    	JP string_cmp_2
+0185   00C5             string_cmp_fail:
+0186   00C5 06 00       	LD B,0h
+0187   00C7 C9          	RET
+0188   00C8             string_cmp_pass:
+0189   00C8 06 01       	LD B,1h
+0190   00CA C9          	RET
+0191   00CB             
+0192   00CB             ;-----------------------
+0193   00CB             	
+0194   00CB             startloop:			; starting point for program	
+0195   00CB 21 E0 01    	LD HL, starttext	; Load Start Message Location
+0196   00CE CD 20 00    	CALL puts		; print start message
+0197   00D1 C3 DA 00    	JP command_loop
+0198   00D4             
+0199   00D4             ;----------------------------------------------
+0200   00D4             command_loop_aborted:
+0201   00D4 21 F8 01    	LD HL, abort_msg
+0202   00D7 CD 20 00    	CALL puts
+0203   00DA             command_loop:
+0204   00DA CD 4B 00    	CALL new_line
+0205   00DD 21 E7 01    	LD HL,command_msg
+0206   00E0 CD 20 00    	CALL puts
+0207   00E3 CD 39 00    	CALL uin
+0208   00E6 CD 1A 00    	CALL putc
+0209   00E9 FE 4A       	CP 4Ah
+0210   00EB CA F8 00    	JP Z,j_loop
+0211   00EE FE 50       	CP 50h
+0212   00F0 CA 06 01    	JP Z,p_loop
+0213   00F3 FE 52       	CP 52h
+0214   00F5 CA 1E 01    	JP Z,r_loop
+0215   00F8             
+0216   00F8             
+0217   00F8             j_loop:
+0218   00F8 CD 39 00    	CALL uin
+0219   00FB CD 1A 00    	CALL putc
+0220   00FE FE 4D       	CP 4Dh		;JM COMMAND
+0221   0100 CA 00 81    	JP Z,8100h
+0222   0103 C3 DA 00    	JP command_loop
+0223   0106             
+0224   0106             p_loop:
+0225   0106 CD 39 00    	CALL uin
+0226   0109 CD 1A 00    	CALL putc
+0227   010C FE 45       	CP 45h		;PE COMMAND
+0228   010E CA 31 01    	JP Z,pe_com
+0229   0111 FE 4F       	CP 4Fh		;PO COMMAND
+0230   0113 CA 58 01    	JP Z,po_com
+0231   0116 FE 2B       	CP 2Bh		;P+ COMMAND
+0232   0118 CA 7C 01    	JP Z,p_plus_com
+0233   011B C3 DA 00    	JP command_loop
+0234   011E             
+0235   011E             r_loop:
+0236   011E CD 39 00    	CALL uin
+0237   0121 CD 1A 00    	CALL putc
+0238   0124 FE 53       	CP 53h		;RS COMMAND
+0239   0126 CA 00 00    	JP Z,0000h
+0240   0129 FE 50       	CP 50h		;RP COMMAND "REMOTE PROGRAM"
+0241   012B CA A1 01    	JP Z,serial_program
+0242   012E C3 DA 00    	JP command_loop
+0243   0131             
+0244   0131             
+0245   0131             ;---------------------------------------------------
+0246   0131             pe_com:			;Peek Command
+0247   0131 CD 4B 00    	CALL new_line
+0248   0134 21 D6 01    	LD HL, address
+0249   0137 CD 20 00    	CALL puts
+0250   013A CD 53 00    	CALL make_hex
+0251   013D 57          	LD D,A
+0252   013E CD 53 00    	CALL make_hex
+0253   0141 5F          	LD E,A
+0254   0142 CD 4B 00    	CALL new_line
+0255   0145 1A          	LD A,(DE)
+0256   0146 67          	LD H,A
+0257   0147 CD 78 00    	CALL Num2Hex
+0258   014A 7A          	LD A,D
+0259   014B CD 1A 00    	CALL putc
+0260   014E 7B          	LD A,E
+0261   014F CD 1A 00    	CALL putc
+0262   0152 CD 4B 00    	CALL new_line
+0263   0155 C3 DA 00    	JP command_loop
+0264   0158             
+0265   0158             
+0266   0158             po_com:			;Poke Command
+0267   0158 CD 4B 00    	CALL new_line
+0268   015B 21 D6 01    	LD HL, address
+0269   015E CD 20 00    	CALL puts
+0270   0161 CD 53 00    	CALL make_hex
+0271   0164 57          	LD D,A
+0272   0165 CD 53 00    	CALL make_hex
+0273   0168 5F          	LD E,A
+0274   0169 CD 4B 00    	CALL new_line
+0275   016C 21 F1 01    	LD HL,data_msg
+0276   016F CD 20 00    	CALL puts
+0277   0172 CD 53 00    	CALL make_hex
+0278   0175 12          	LD (DE),A
+0279   0176 CD 4B 00    	CALL new_line
+0280   0179 C3 DA 00    	JP command_loop
+0281   017C             
+0282   017C             
+0283   017C             p_plus_com:		;Poke Command With Auto Inc
+0284   017C CD 4B 00    	CALL new_line
+0285   017F 21 B5 01    	LD HL,start_add
+0286   0182 CD 20 00    	CALL puts
+0287   0185 CD 53 00    	CALL make_hex
+0288   0188 57          	LD D,A
+0289   0189 CD 53 00    	CALL make_hex
+0290   018C 5F          	LD E,A
+0291   018D CD 4B 00    	CALL new_line
+0292   0190             p_plus_com_loop_1:
+0293   0190 21 F1 01    	LD HL,data_msg
+0294   0193 CD 20 00    	CALL puts
+0295   0196 CD 53 00    	CALL make_hex
+0296   0199 12          	LD (DE),A
+0297   019A CD 4B 00    	CALL new_line
+0298   019D 13          	INC DE
+0299   019E C3 90 01    	JP p_plus_com_loop_1
+0300   01A1             
+0301   01A1             ;---------------------------------------------------
+0302   01A1             
+0303   01A1             serial_program:
+0304   01A1 21 00 81    	LD HL,8100h	; set location to store program sent from serial terminal
+0305   01A4             secloop:
+0306   01A4 CD 39 00    	CALL uin
+0307   01A7 CD 1A 00    	CALL putc
+0308   01AA FE 7F       	CP 7Fh		; Check for delete to know when to execute program in ram
+0309   01AC CA 00 81    	JP Z,8100h	; If delete jump to ram location
+0310   01AF 77          	LD (HL),A	; used to store above hex into memory
+0311   01B0 23          	INC HL		; incriment hl for next byte
+0312   01B1 C3 A4 01    	JP secloop	; loop until makehex finds 'del', then execute jump to 8100h
+0313   01B4             	
+0314   01B4 76          	HALT		; stop cpu in the event that the program misbehaves 
+0315   01B5             
+0316   01B5             	
+0317   01B5             
+0318   01B5             
+0319   01B5             
+0320   01B5             ;Strings
+0321   01B5             ;--------------------------------------------------
+0322   01B5             start_add:		; PE/PO Start Address
+0323   01B5 53 74 61 72 	DEFB "Start Add: ",0
+0323   01B9 74 20 41 64 
+0323   01BD 64 3A 20 00 
+0324   01C1             end_add:		; PE End Address
+0325   01C1 45 6E 64 20 	DEFB "End Add: ",0
+0325   01C5 41 64 64 3A 
+0325   01C9 20 00       
+0326   01CB             new_dat:		; New Data For PO Command
+0327   01CB 4E 65 77 20 	DEFB "New Data: ",0
+0327   01CF 44 61 74 61 
+0327   01D3 3A 20 00    
+0328   01D6             address:		; Address Text
+0329   01D6 41 64 64 72 	DEFB "Address: ",0
+0329   01DA 65 73 73 3A 
+0329   01DE 20 00       
+0330   01E0             starttext:		; start message
+0331   01E0 52 45 41 44 	DEFB "READY", lf,0
+0331   01E4 59 0A 00    
+0332   01E7             command_msg:		; Enter Command message
+0333   01E7 43 6F 6D 6D 	DEFB "Command: ",0
+0333   01EB 61 6E 64 3A 
+0333   01EF 20 00       
+0334   01F1             data_msg:		; Data Message
+0335   01F1 44 61 74 61 	DEFB "Data: ",0
+0335   01F5 3A 20 00    
+0336   01F8             abort_msg:		; Abort Message
+0337   01F8 41 62 6F 72 	DEFB "Aborted", lf,0
+0337   01FC 74 65 64 0A 
+0337   0200 00          
+0338   0201             ;--------------------------------------------------
+0339   0201             	
+0340   0201             
+0341   0201             
+0342   0201             	.ORG 8100h
+0343   8100 CD 9C 00    	CALL get_string
+0344   8103 21 E0 01    	LD HL,starttext
+0345   8106 CD AF 00    	CALL string_cmp
+0346   8109 C3 CB 00    	JP startloop
 Number of errors = 0
