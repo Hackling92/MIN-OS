@@ -157,14 +157,28 @@ get_string:
 	LD HL,8000h
 get_string_2:
 	CALL uin
-	CP 0Dh
+	CP 0Dh			;ENTER
 	JP Z,get_string_1
+	CP 08h			;BACKSPACE
+	JP Z,get_string_3
+	CALL putc
 	LD (HL),A
 	INC HL
 	JP get_string_2
 get_string_1:
 	LD (HL),00h
 	RET
+get_string_3:
+	LD D,H
+	LD E,L
+	DEC DE
+	LD A,(DE)
+	CP 0h
+	JP Z,get_string_2
+	DEC HL
+	LD A,08h
+	CALL putc
+	JP get_string_2
 
 ;-----------------------
 
@@ -183,10 +197,10 @@ string_cmp_1:
 	INC DE
 	JP string_cmp_2
 string_cmp_fail:
-	LD B,0h
+	OR A
 	RET
 string_cmp_pass:
-	LD B,1h
+	SCF
 	RET
 
 ;-----------------------
@@ -204,40 +218,49 @@ command_loop:
 	CALL new_line
 	LD HL,command_msg
 	CALL puts
-	CALL uin
-	CALL putc
-	CP 4Ah
-	JP Z,j_loop
-	CP 50h
-	JP Z,p_loop
-	CP 52h
-	JP Z,r_loop
+	CALL get_string
 
+	LD HL,peek_command	;PEEK COMMAND
+	CALL string_cmp
+	JP C,pe_com
 
-j_loop:
-	CALL uin
-	CALL putc
-	CP 4Dh		;JM COMMAND
-	JP Z,8100h
+	LD HL,poke_command	;POKE COMMAND
+	CALL string_cmp
+	JP C,po_com
+
+	LD HL,poke+_command	;POKE+ COMMAND
+	CALL string_cmp
+	JP C,p_plus_com
+
+	LD HL,reset_command	;RESET COMMAND
+	CALL string_cmp
+	JP C,rs_com
+
+	LD HL,jump_command	;JUMP COMMAND
+	CALL string_cmp
+	JP C,jm_com
+
+	LD HL,program_command	;PROGRAM COMMAND
+	CALL string_cmp
+	JP C,rp_com
+
+	LD HL,invalid_msg
+	CALL puts
 	JP command_loop
 
-p_loop:
-	CALL uin
-	CALL putc
-	CP 45h		;PE COMMAND
-	JP Z,pe_com
-	CP 4Fh		;PO COMMAND
-	JP Z,po_com
-	CP 2Bh		;P+ COMMAND
-	JP Z,p_plus_com
+
+
+jm_com:
+	JP Z,8101h
 	JP command_loop
 
-r_loop:
-	CALL uin
-	CALL putc
-	CP 53h		;RS COMMAND
+
+
+rs_com:
 	JP Z,0000h
-	CP 50h		;RP COMMAND "REMOTE PROGRAM"
+	CALL command_loop
+
+rp_com:
 	JP Z,serial_program
 	JP command_loop
 
@@ -335,11 +358,33 @@ data_msg:		; Data Message
 	DEFB "Data: ",0
 abort_msg:		; Abort Message
 	DEFB "Aborted", lf,0
+invalid_msg:		; Abort Message
+	DEFB "Invalid Com", lf,0
+;--------------------------------------------------
+
+
+
+;Command Strings
+;--------------------------------------------------
+
+peek_command:
+	DEFB "PEEK",0
+poke_command:
+	DEFB "POKE",0
+poke+_command:
+	DEFB "POKE+",0
+reset_command:
+	DEFB "RESET",0
+jump_command:
+	DEFB "JUMP",0
+program_command:
+	DEFB "PROGRAM",0
+
 ;--------------------------------------------------
 	
 
 
-	.ORG 8100h
+	.ORG 8101h
 	CALL get_string
 	LD HL,starttext
 	CALL string_cmp
